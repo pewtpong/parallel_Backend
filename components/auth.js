@@ -1,8 +1,9 @@
-const passport = require("koa-passport");
-
-const fetchUser = (() => {
-    const user = { id: 1, user: "test", password: "test" };
-    return async () =>{
-        return user;
-    }
-});
+module.exports = ({ router }) => {
+    const jwt = require('jsonwebtoken');
+    const usersModel = require('../models/users');
+	router.post("/api/auth", async (ctx, next) => {
+        console.log(ctx.request.body);
+        const token = jwt.sign(ctx.request.body,'ww');
+        ctx.body= token;
+	});
+};

@@ -12,6 +12,9 @@ const userSchema = new Schema({
         }
     },
     password: String,
+    groupChat: Array,
+    chat:Array,
+    profilePic:String
 });
 
 module.exports = mongoose.model('Users',userSchema);

@@ -2,7 +2,7 @@ const Koa = require('koa');
 const json = require('koa-json');
 const Router = require('koa-router');
 const logger = require('koa-logger');
-const mongoConnect = require('./src/database');
+const jwt = require('jsonwebtoken');
 
 const app = new Koa();
 
@@ -33,7 +33,8 @@ app.use(router.routes());
 app.use(router.allowedMethods());
 
 // MONGO
-mongoConnect._connect();
+const mongoConnect = require('./src/database');
+//mongoConnect._connect();
 
 
 app.use(async (ctx,next) => {
@@ -49,8 +50,11 @@ app.use(async (ctx,next) => {
 const testRoute = require('./routes/test');
 const registerRoute = require('./routes/register');
 const loginRoute = require('./routes/login');
+//onst authRoute = require('./components/auth');
+const homeRoute = require('./routes/home')
 //const authRoute = require('./components/auth');
 //authRoute({router});
+homeRoute({router});
 testRoute({router});
 registerRoute({router});
 loginRoute({router});
