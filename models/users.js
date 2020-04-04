@@ -12,7 +12,7 @@ const userSchema = new Schema({
         }
     },
     password: String,
-    groupChat: Array,
+    chatRooms: Array,
     chat:Array,
     profilePic:String
 });

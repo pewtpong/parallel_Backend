@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Socket.io</title>
+		<script src="http://localhost:3000/socket.io/socket.io.js"></script>
+		<link
+			rel="stylesheet"
+			href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+			integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+			crossorigin="anonymous"
+		/>
+		<script
+			src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+			integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+			crossorigin="anonymous"
+		></script>
+		<script
+			src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+			integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+			crossorigin="anonymous"
+		></script>
+		<script
+			src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+			integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+			crossorigin="anonymous"
+		></script>
+		<script>
+			$(document).ready(function () {
+				var socket = io("http://localhost:3000", {
+					query:
+						"token=" +
+						"eyJhbGciOiJIUzI1NiJ9.dGVzdDE.xwsQdV26DM01VH-_XEKPTSEbyfGNuOlNcwo-9XNV3Fo",
+				});
+				/*socket.emit('auth',"eyJhbGciOiJIUzI1NiJ9.dGVzdDE.xwsQdV26DM01VH-_XEKPTSEbyfGNuOlNcwo-9XNV3Fo",(data) =>{
+                console.log(data);
+              });*/
+				console.log("connected");
+				socket.on("error", (err) => {
+					console.log(err);
+					if (
+						err.type == "UnauthorizedError" ||
+						err.code == "invalid_token"
+					) {
+						// redirect user to login page perhaps or execute callback:
+						//callback();
+						console.log("User's token has expired");
+					}
+				});
+				socket.on("isAuth", (msg) => {
+					//$("#uname").append(msg);
+					console.log(msg);
+				});
+				$("#add_status").click(function () {
+					socket.emit("status added", $("#comment").val());
+				});
+				socket.on("refresh feed", function (msg) {
+					$("#show_comments").append(msg + "<br /><br />");
+        });
+        socket.on("chatRooms", function (msg) {
+          console.log(msg);
+					$("#showRooms").append(msg + "<br /><br />");
+				});
+				$("#createGroup").click(() => {
+					socket.emit("createGroup", $("#group_name").val());
+					console.log($("#group_name").val());
+				});
+			});
+		</script>
+	</head>
+	<body>
+		<div class="jombotron text-center"><h1>Chat tester</h1></div>
+		<div class="container-fluid">
+			<div class="row">
+				<div class="col-2"></div>
+				<div class="col">
+          <div class="row" id="showRooms"></div>
+					<div class="row">
+						<div class="col">
+							<textarea id="comment" style="width: 100%;"></textarea><br /><br />
+						</div>
+						<div class="col">
+							<input type="button" id="add_status" value="Send" />
+						</div>
+					</div>
+					<div class="row">
+						<div class="col">
+							<textarea id="group_name" style="width: 100%;"></textarea><br /><br />
+						</div>
+						<div class="col">
+							<input
+								type="button"
+								id="createGroup"
+								value="Create Group"
+							/>
+						</div>
+					</div>
+				</div>
+				<div class="col-2"></div>
+			</div>
+		</div>
+		<div id="comment_box" style="padding: 5%;"></div>
+		<div>
+			<div
+				id="show_comments"
+				class="jumbotron"
+				style="
+					width: 38%;
+					height: 100%;
+					padding: 2%;
+					margin-left: 5%;
+					margin-top: -53px;
+					float: left;
+				"
+			></div>
+		</div>
+	</body>
+</html>

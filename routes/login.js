@@ -5,6 +5,7 @@ const secret = process.env.JWT_SECRET || 'secret';
 
 module.exports = ({ router }) => {
 	router.post("/api/login", async (ctx, next) => {
+        //console.log("login");
         let status;
         let uname = ctx.request.body.username;
         let pword = ctx.request.body.password;

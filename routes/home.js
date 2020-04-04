@@ -6,7 +6,8 @@ module.exports = ({ router }) => {
         console.log(uname);
         await usersModel.find({
             username : uname
-        }).then(async (doc) =>{
+        }).then((doc) =>{
+            console.log(doc);
             ctx.body = doc;
         })
 	});
