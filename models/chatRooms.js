@@ -5,7 +5,7 @@ const Schema = mongoose.Schema;
 const chatRoomsSchema = new Schema({
     chatName: String,
     lastestUpdate: Date,
-    member:Array,
+    members:Array,
     message: Array,
     chatType: String
 });
