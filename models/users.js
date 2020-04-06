@@ -13,8 +13,8 @@ const userSchema = new Schema({
     },
     password: String,
     chatRooms: Array,
-    chat:Array,
-    profilePic:String
+    profilePic:String,
+    friends:[String]
 });
 
 module.exports = mongoose.model('Users',userSchema);

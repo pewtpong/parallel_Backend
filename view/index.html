@@ -43,6 +43,7 @@
 						err.type == "UnauthorizedError" ||
 						err.code == "invalid_token"
 					) {
+						$("#loginFeild").empty();
 						$("#loginFeild").append(
 							'<label for="Uname">Username: </label>' +
 								'<input type="text" id="loginUname" name="loginUname"/>' +
@@ -50,26 +51,50 @@
 								'<input type="text" id="loginPword" name="loginPword"/>' +
 								'<input type="button" value="Submit" id="loginSubmit"/>'
 						);
-						// redirect user to login page perhaps or execute callback:
-						//callback();
 						console.log("User's token has expired");
 					}
 				});
 				socket.on("isAuth", (msg) => {
 					thisUser = msg;
-					console.log(msg);
+					//console.log(msg);
 					$("#loginFeild").empty();
 					$("#loginFeild").append(
 						"<h1>" + thisUser.username + "</h1>"
 					);
 				});
 				socket.on("thisRoom", async (msg) => {
-					room_msg = msg.message;
-					$("#chatBox").empty();
-					room_msg.forEach((chat) => {
-						$("#chatBox").append(chat.msg + "<br />");
-					});
-					updateScroll();
+					if (msg === 1) {
+						alert("Duplicate User in Group");
+					} else {
+						room_msg = msg.message;
+						$("#chatBox").empty();
+						$("#chatMember").empty();
+						room_msg.forEach((chat) => {
+							$("#chatBox").append(chat.msg + "<br />");
+						});
+						msg.members.forEach((member) => {
+							$("#chatMember").append(member.username + "<br />");
+						});
+						$("#roomID").empty();
+						$("#roomID").append("<h3>" + msg._id + "</h3>");
+						updateScroll();
+					}
+				});
+				socket.on("friendList", (friendList) => {
+					console.log(friendList);
+					if (friendList == null) {
+						alert("Username not found");
+					} else if (friendList === -1) {
+						alert("Duplicate friend");
+					} else {
+						thisUser.friends = friendList;
+						$("#friendList").empty();
+						friendList.forEach((friend) => {
+							$("#friendList").append(friend + "<br />");
+						});
+
+						updateScroll();
+					}
 				});
 				socket.on("updateRoom", async (room_msg) => {
 					$("#chatBox").append(room_msg.msg + "<br />");
@@ -85,6 +110,30 @@
 							msg: $("#comment").val(),
 						});
 						$("#comment").val("");
+					}
+				});
+				$("#add_friend").click(() => {
+					let uname = $("#add_friend_uname").val();
+					//alert(uname);
+					if (uname == "") {
+						alert("Fill friend username");
+					} else {
+						socket.emit("addFriend", {
+							uname,
+						});
+						$("#add_friend_uname").val("");
+					}
+				});
+				$("#join_group").click(() => {
+					let gid = $("#group_to_join").val();
+					if (gid == "") {
+						alert("Fill Group ID");
+					} else {
+						socket.emit("joinGroup", {
+							gid: gid,
+							username: thisUser.username,
+						});
+						$("#add_friend_uname").val("");
 					}
 				});
 				socket.on("chatRooms", function (msg) {
@@ -108,8 +157,6 @@
 				});
 				$("#createGroup").click(() => {
 					socket.emit("createGroup", $("#group_name").val());
-					location.reload();
-					//console.log($("#group_name").val());
 				});
 				function updateScroll() {
 					let element = document.getElementById("chatBox");
@@ -148,7 +195,7 @@
 				});
 				socket.on("forceDisconnect", () => {
 					socket.disconnect();
-					alert("Duplicate Login")
+					alert("Duplicate Login");
 					$("#loginFeild").empty();
 					$("#loginFeild").append(
 						'<label for="Uname">Username: </label>' +
@@ -169,20 +216,85 @@
 			</div>
 			<div class="row" style="height: 30px;"></div>
 			<div class="jombotron text-center"><h1>Chat tester</h1></div>
+
 			<div class="row" style="height: 30px;"></div>
 			<div class="row">
 				<div class="col-2"></div>
 				<div class="col">
 					<div class="row">
-						<div class="rooms" id="showRooms"></div>
+						<div class="col">
+							<textarea
+								id="add_friend_uname"
+								style="width: 100%;"
+							></textarea
+							><br /><br />
+						</div>
+						<div class="col">
+							<input
+								type="button"
+								id="add_friend"
+								value="Add Friend"
+							/>
+						</div>
 					</div>
 					<div class="row" style="height: 30px;"></div>
 					<div class="row">
-						<div
-							id="chatBox"
-							class="jumbotron"
-							style="width: 100%; height: 200px; overflow: auto;"
-						></div>
+						<div class="col">
+							<textarea
+								id="group_to_join"
+								style="width: 100%;"
+							></textarea
+							><br /><br />
+						</div>
+						<div class="col">
+							<input
+								type="button"
+								id="join_group"
+								value="Join Group"
+							/>
+						</div>
+					</div>
+					<div class="row" style="height: 30px;"></div>
+					<div class="row">
+						<div class="rooms" id="showRooms"></div>
+					</div>
+					<div class="row" style="height: 30px;"></div>
+					<div class="row" style="height: 30px;" id="roomID"></div>
+					<div class="row" style="height: 30px;"></div>
+					<div class="row" style="height: 200px;">
+						<div class="col-2">
+							<div
+								id="chatMember"
+								style="
+									border-style: solid;
+									width: 100%;
+									height: 100%;
+									overflow: auto;
+								"
+							></div>
+						</div>
+						<div class="col">
+							<div
+								id="chatBox"
+								style="
+									border-style: solid;
+									width: 100%;
+									height: 100%;
+									overflow: auto;
+								"
+							></div>
+						</div>
+						<div class="col-2">
+							<div
+								id="friendList"
+								style="
+									border-style: solid;
+									width: 100%;
+									height: 100%;
+									overflow: auto;
+								"
+							></div>
+						</div>
 					</div>
 					<div class="row" style="height: 30px;"></div>
 					<div class="row">

@@ -109,10 +109,11 @@ io.on("connection", async (socket) => {
 			username: socket.decoded_token,
 		})
 		.then(async (doc) => {
-			//console.log(clients[0].id);
+			console.log(doc[0]);
 			userData = doc[0];
 			socket.emit("isAuth", userData);
 			socket.emit("chatRooms", userData.chatRooms);
+			socket.emit("friendList", userData.friends);
 		});
 	await currentClient
 		.find({
@@ -120,7 +121,7 @@ io.on("connection", async (socket) => {
 		})
 		.then((doc) => {
 			if (doc.length != 0) {
-				console.log(doc);
+				//console.log(doc);
 				socket.to(doc[0].sid).emit("forceDisconnect");
 			}
 		});
@@ -137,6 +138,76 @@ io.on("connection", async (socket) => {
 			upsert: true,
 		}
 	);
+	// USER'S DEPENDENCY
+	socket.on("addFriend", (msg) => {
+		usersModel
+			.find({
+				username: msg.uname,
+			})
+			.then((doc) => {
+				if (doc.length !== 0) {
+					console.log(doc[0].friends);
+					if (doc[0].friends.indexOf(userData.username) !== -1) {
+						socket.emit("friendList", -1);
+					} else {
+						usersModel
+							.findOneAndUpdate(
+								{
+									username: msg.uname,
+								},
+								{
+									$addToSet: {
+										friends: userData.username,
+									},
+								}
+							)
+							.then((doc) => {
+								currentClient
+									.find({
+										uid: doc._id,
+									})
+									.then((sdoc) => {
+										let fTemp = doc.friends;
+										fTemp.push(userData.username);
+										io.to(sdoc[0].sid).emit(
+											"friendList",
+											fTemp
+										);
+									});
+							});
+						usersModel
+							.findOneAndUpdate(
+								{
+									username: userData.username,
+								},
+								{
+									$push: {
+										friends: msg.uname,
+									},
+								}
+							)
+							.then(() => {
+								userData.friends.push(msg.uname);
+								socket.emit("friendList", userData.friends);
+							});
+					}
+				} else {
+					socket.emit("friendList");
+				}
+			});
+	});
+	// ROOM
+	socket.on("room", async (roomId) => {
+		await roomsModel
+			.find({
+				_id: roomId,
+			})
+			.then((doc) => {
+				currentRoom = doc[0];
+				socket.join(roomId);
+				socket.emit("thisRoom", currentRoom);
+			});
+	});
 	socket.on("chat", async (chat) => {
 		if (chat.cid == currentRoom._id) {
 			//console.log(currentRoom._id);
@@ -151,57 +222,55 @@ io.on("connection", async (socket) => {
 					}
 				)
 				.then(() => {
-					socket.emit("updateRoom", chat);
+					io.in(chat.cid).emit("updateRoom", chat);
 				});
 		}
 	});
-	socket.on("room", async (roomId) => {
-		await roomsModel
-			.find({
-				_id: roomId,
-			})
-			.then((doc) => {
-				//console.log(doc[0]);
-				currentRoom = doc[0];
-				socket.join(roomId);
-				socket.emit("thisRoom", currentRoom);
-			});
-	});
+	// GROUP
 	socket.on("createGroup", async (groupName) => {
-		let temp = await new roomsModel({
-			chatName: groupName,
-			members: [userData._id],
-			chatType: "g",
-			lastestUpdate: new Date(),
-		});
-		await temp
-			.save()
-			.then(async (doc) => {
-				//console.log(doc);
-				cid = doc._id;
-				let chatTemp = {
-					chatName: doc.chatName,
-					cid: doc._id,
-				};
-				await usersModel
-					.findOneAndUpdate(
-						{
-							_id: userData._id,
-						},
-						{
-							$push: { chatRooms: chatTemp },
-						}
-					)
-					.then(() => {
-						socket.emit("chatRooms", userData.chatRooms);
-					});
-			})
-			.catch((err) => {
-				console.error(err);
+		if (groupName != "") {
+			let temp = await new roomsModel({
+				chatName: groupName,
+				members: [
+					{
+						uid: userData._id,
+						username: userData.username,
+						profilePic: userData.profilePic,
+					},
+				],
+				chatType: "g",
+				lastestUpdate: new Date(),
 			});
+			await temp
+				.save()
+				.then(async (doc) => {
+					//console.log(doc);
+					cid = doc._id;
+					let chatTemp = {
+						chatName: doc.chatName,
+						cid: doc._id,
+					};
+					usersModel
+						.findOneAndUpdate(
+							{
+								_id: userData._id,
+							},
+							{
+								$push: { chatRooms: chatTemp },
+							}
+						)
+						.then(() => {
+							userData.chatRooms.push(chatTemp);
+							socket.emit("chatRooms", userData.chatRooms);
+							//console.log(userData.chatRooms);
+						});
+				})
+				.catch((err) => {
+					console.error(err);
+				});
+		}
 	});
 	socket.on("deleteGroup", async (roomId) => {
-		//console.log(groupName);
 		let group;
 		let members;
 		roomsModel
@@ -209,7 +278,6 @@ io.on("connection", async (socket) => {
 				_id: roomId,
 			})
 			.then((doc) => {
-				//console.log(doc[0]);
 				group = doc[0];
 				members = doc[0].members;
 			})
@@ -217,7 +285,7 @@ io.on("connection", async (socket) => {
 				members.forEach((member) => {
 					usersModel.updateOne(
 						{
-							_id: member,
+							_id: member.uid,
 						},
 						{
 							$pull: { chatRooms: roomId },
@@ -232,24 +300,62 @@ io.on("connection", async (socket) => {
 				socket.emit("chatRooms", userData.chatRooms);
 			});
 	});
-	socket.on("joinGroup", async (roomId) => {
-		roomsModel.findOneAndUpdate(
-			{
-				_id: roomId,
-			},
-			{
-				$push: { members: userData._id },
-			}
-		);
-		usersModel.findOneAndUpdate(
-			{
-				_id: userData._id,
-			},
-			{
-				$push: { chatRooms: roomId },
-			}
-		);
-		await socket.emit("chatRooms", userData.chatRooms);
+	socket.on("joinGroup", async (msg) => {
+		roomsModel
+			.find({
+				_id: msg.gid,
+			})
+			.then( (doc) => {
+				let state = -1;
+				if (doc.length !== 0) {
+					if (msg.username === userData.username) {
+						state = 0;
+						for(let i = 0; i< doc[0].members.length; i++){
+							console.log(doc[0].members[i].uid , userData._id)
+							if( doc[0].members[i].uid.toString() === userData._id.toString()){
+								state = 1
+								break;
+							}
+						}
+						console.log(state);
+						if (state == 0) {
+							let updatedRoom = roomsModel.findOneAndUpdate(
+								{
+									_id: msg.gid,
+								},
+								{
+									lastestUpdate: new Date(),
+									$push: {
+										members: {
+											uid: userData._id,
+											username: userData.username,
+											profilePic: userData.profilePic,
+										},
+									},
+								}
+							).then(() =>  {
+								updatedRoom.members.push( {
+									uid: userData._id,
+									username: userData.username,
+									profilePic: userData.profilePic,
+								})
+							})
+							usersModel.findOneAndUpdate(
+								{
+									_id: userData._id,
+								},
+								{
+									$push: { chatRooms: msg.uid },
+								}
+							);
+							socket.emit("thisRoom", userData.chatRooms);
+						}else{
+							socket.emit("thisRoom", state);
+						}
+					}
+					//socket.emit("chatRooms", userData.chatRooms);
+				}
+			});
 	});
 	socket.on("joinGroup", async (roomId) => {
 		roomsModel.findOneAndUpdate(
