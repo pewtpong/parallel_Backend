@@ -9,6 +9,7 @@ module.exports = ({ router }) => {
         let status;
         let uname = ctx.request.body.username;
         let pword = ctx.request.body.password;
+        //console.log(ctx);
         await usersModel.find({
             username : uname
         })

@@ -85,6 +85,7 @@ io = socketIo.listen(http);
 //const authenticated = require("./middleware/authenticated");
 const usersModel = require("./models/users");
 const roomsModel = require("./models/chatRooms");
+const currentClient = require("./models/currentClient");
 var socketioJwt = require("socketio-jwt");
 
 io.use(
@@ -98,71 +99,85 @@ io.use(
 io.on("connection", async (socket) => {
 	//console.log(socket.decoded_token);
 	let userData;
-    let currentRoom;
-    let currentNSP;
-    let clients;
-    //clients = io.sockets.clients("5e88c8fa9b135f3f88ea4296");
-    clients = Object.keys(io.engine.clients);
-    //console.log(clients);
+	let currentRoom;
+	let clients;
+	//clients = io.sockets.clients("5e88c8fa9b135f3f88ea4296");
+	clients = Object.keys(io.engine.clients);
+	console.log(socket.id);
 	await usersModel
 		.find({
 			username: socket.decoded_token,
 		})
 		.then(async (doc) => {
-			console.log(doc[0]);
+			//console.log(clients[0].id);
 			userData = doc[0];
-			//if(userData.chatRooms)
-			socket.emit("isAuth",userData)
+			socket.emit("isAuth", userData);
 			socket.emit("chatRooms", userData.chatRooms);
 		});
-	
-	//let user = socket.decoded_token;
-	//console.log("hello! ", socket.decoded_token);
-	
-	/*socket.on("status added", (status) => {
-		let jsonData = JSON.parse(status);
-		console.log(jsonData.uname);
-		io.emit("refresh feed", jsonData.msg);
-	});*/
-	socket.on("chat", async (chat) =>{
-		if(chat.cid == currentRoom._id){
-			console.log(currentRoom._id);
-			await roomsModel.findOneAndUpdate({
-				_id: currentRoom,
-			},{
-				lastestUpdate:new Date(),
-				$push:{message: chat}
-			}).then(() => {
-				socket.emit("updateRoom",chat)
-			})
+	await currentClient
+		.find({
+			uid: userData._id,
+		})
+		.then((doc) => {
+			if (doc.length != 0) {
+				console.log(doc);
+				socket.to(doc[0].sid).emit("forceDisconnect");
+			}
+		});
+	await currentClient.findOneAndUpdate(
+		{
+			uid: userData.id,
+		},
+		{
+			$set: {
+				sid: socket.id,
+			},
+		},
+		{
+			upsert: true,
 		}
-		
+	);
+	socket.on("chat", async (chat) => {
+		if (chat.cid == currentRoom._id) {
+			//console.log(currentRoom._id);
+			await roomsModel
+				.findOneAndUpdate(
+					{
+						_id: currentRoom,
+					},
+					{
+						lastestUpdate: new Date(),
+						$push: { message: chat },
+					}
+				)
+				.then(() => {
+					socket.emit("updateRoom", chat);
+				});
+		}
 	});
 	socket.on("room", async (roomId) => {
-		console.log(roomId);
 		await roomsModel
 			.find({
 				_id: roomId,
 			})
 			.then((doc) => {
-				console.log(doc[0]);
-                currentRoom = doc[0];
-                socket.join(roomId);
+				//console.log(doc[0]);
+				currentRoom = doc[0];
+				socket.join(roomId);
 				socket.emit("thisRoom", currentRoom);
 			});
 	});
 	socket.on("createGroup", async (groupName) => {
-		//console.log(groupName);
 		let temp = await new roomsModel({
 			chatName: groupName,
 			members: [userData._id],
-            chatType: "g",
-            lastestUpdate: new Date()
+			chatType: "g",
+			lastestUpdate: new Date(),
 		});
 		await temp
 			.save()
 			.then(async (doc) => {
-				console.log(doc);
+				//console.log(doc);
 				cid = doc._id;
 				let chatTemp = {
 					chatName: doc.chatName,
@@ -189,29 +204,71 @@ io.on("connection", async (socket) => {
 		//console.log(groupName);
 		let group;
 		let members;
-		await roomsModel
+		roomsModel
 			.find({
 				_id: roomId,
 			})
 			.then((doc) => {
-				console.log(doc[0]);
+				//console.log(doc[0]);
 				group = doc[0];
 				members = doc[0].members;
 			})
 			.then(() => {
 				members.forEach((member) => {
-					usersModel.updateOne({
-                        _id: member
-                    },{
-                        $pull: {chatRooms: roomId}
-                    });
-                });
-                roomsModel.findOneAndDelete({
-                    _id : roomId
-                });
-			}).then(() => {
-                socket.emit("chatRooms", userData.chatRooms);
-            });
+					usersModel.updateOne(
+						{
+							_id: member,
+						},
+						{
+							$pull: { chatRooms: roomId },
+						}
+					);
+				});
+				roomsModel.findOneAndDelete({
+					_id: roomId,
+				});
+			})
+			.then(() => {
+				socket.emit("chatRooms", userData.chatRooms);
+			});
+	});
+	socket.on("joinGroup", async (roomId) => {
+		roomsModel.findOneAndUpdate(
+			{
+				_id: roomId,
+			},
+			{
+				$push: { members: userData._id },
+			}
+		);
+		usersModel.findOneAndUpdate(
+			{
+				_id: userData._id,
+			},
+			{
+				$push: { chatRooms: roomId },
+			}
+		);
+		await socket.emit("chatRooms", userData.chatRooms);
+	});
+	socket.on("joinGroup", async (roomId) => {
+		roomsModel.findOneAndUpdate(
+			{
+				_id: roomId,
+			},
+			{
+				$push: { members: userData._id },
+			}
+		);
+		usersModel.findOneAndUpdate(
+			{
+				_id: userData._id,
+			},
+			{
+				$push: { chatRooms: roomId },
+			}
+		);
+		await socket.emit("chatRooms", userData.chatRooms);
 	});
 
 	//client.on('register',handlerRegister);

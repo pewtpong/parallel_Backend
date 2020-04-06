@@ -30,14 +30,12 @@
 				let socket = io("http://localhost:3000", {
 					query:
 						"token=" +
-						"eyJhbGciOiJIUzI1NiJ9.dGVzdDE.xwsQdV26DM01VH-_XEKPTSEbyfGNuOlNcwo-9XNV3Fo",
+						"yJhbGciOiJIUzI1NiJ9.dGVzdDE.xwsQdV26DM01VH-_XEKPTSEbyfGNuOlNcwo-9XNV3Fo",
 				});
-				/*socket.emit('auth',"eyJhbGciOiJIUzI1NiJ9.dGVzdDE.xwsQdV26DM01VH-_XEKPTSEbyfGNuOlNcwo-9XNV3Fo",(data) =>{
-                console.log(data);
-			  });*/
 				let cid;
-				let uid;
+				let thisUser;
 				let room_msg;
+				let tokenTemp;
 				console.log("connected");
 				socket.on("error", (err) => {
 					console.log(err);
@@ -45,32 +43,37 @@
 						err.type == "UnauthorizedError" ||
 						err.code == "invalid_token"
 					) {
+						$("#loginFeild").append(
+							'<label for="Uname">Username: </label>' +
+								'<input type="text" id="loginUname" name="loginUname"/>' +
+								'<label for="Pword">Password: </label>' +
+								'<input type="text" id="loginPword" name="loginPword"/>' +
+								'<input type="button" value="Submit" id="loginSubmit"/>'
+						);
 						// redirect user to login page perhaps or execute callback:
 						//callback();
 						console.log("User's token has expired");
 					}
 				});
 				socket.on("isAuth", (msg) => {
-					uid = msg._id;
-					//$("#uname").append(msg);
+					thisUser = msg;
 					console.log(msg);
-					alert("PEWWW");
+					$("#loginFeild").empty();
+					$("#loginFeild").append(
+						"<h1>" + thisUser.username + "</h1>"
+					);
 				});
 				socket.on("thisRoom", async (msg) => {
-					room_msg = msg.message
-					$("#show_comments").empty();
+					room_msg = msg.message;
+					$("#chatBox").empty();
 					room_msg.forEach((chat) => {
-						$("#show_comments").append(chat.msg + "<br /><br />");
+						$("#chatBox").append(chat.msg + "<br />");
 					});
-					//location.reload();
-					console.log(msg);
+					updateScroll();
 				});
 				socket.on("updateRoom", async (room_msg) => {
-					console.log(room_msg);
-					//room_msg = msg.message;
-					$("#show_comments").append(room_msg.msg + "<br /><br />");
-					//location.reload();
-					//console.log(msg);
+					$("#chatBox").append(room_msg.msg + "<br />");
+					updateScroll();
 				});
 				$("#add_msg").click(function () {
 					if (cid == null) {
@@ -78,20 +81,17 @@
 					} else {
 						socket.emit("chat", {
 							cid: cid,
-							uid: uid,
+							uid: thisUser.uid,
 							msg: $("#comment").val(),
 						});
-						$("#comment").val('');
+						$("#comment").val("");
 					}
 				});
-				/*socket.on("refresh feed", function (msg) {
-					$("#show_comments").append(msg + "<br /><br />");
-				});*/
 				socket.on("chatRooms", function (msg) {
 					console.log(msg);
 					if (msg.lenght != 0) {
+						$("#showRooms").empty();
 						msg.forEach((room) => {
-							//$("#showRooms").append("<a href="+ room.cid +  ">" +room.chatName + " </a><br /><br />");
 							$("#showRooms").append(
 								'<input type=button id="' +
 									room.cid +
@@ -103,27 +103,86 @@
 					}
 				});
 				$(".rooms").click(function (event) {
-					//alert(event.target.id);
 					socket.emit("room", event.target.id);
 					cid = event.target.id;
 				});
 				$("#createGroup").click(() => {
 					socket.emit("createGroup", $("#group_name").val());
 					location.reload();
-					console.log($("#group_name").val());
+					//console.log($("#group_name").val());
+				});
+				function updateScroll() {
+					let element = document.getElementById("chatBox");
+					element.scrollTop = element.scrollHeight;
+				}
+
+				$("#loginFeild").on("click", "#loginSubmit", async (event) => {
+					let resData;
+					let status;
+					let uname = await $("#loginUname").val();
+					let pword = await $("#loginPword").val();
+					console.log(uname, pword);
+					let res = await fetch("http://localhost:3000/api/login", {
+						method: "POST",
+						body: JSON.stringify({
+							username: uname,
+							password: pword,
+						}),
+						headers: {
+							"Content-Type": "application/json",
+						},
+					})
+						.then((res) => {
+							console.log(res);
+							return res.json();
+						})
+						.then((obj) => {
+							resData = obj;
+						});
+					if (resData.status === 200) {
+						socket.disconnect();
+						let query = `token=${resData.token}`;
+						socket.io.opts.query = query;
+						socket.connect();
+					}
+				});
+				socket.on("forceDisconnect", () => {
+					socket.disconnect();
+					alert("Duplicate Login")
+					$("#loginFeild").empty();
+					$("#loginFeild").append(
+						'<label for="Uname">Username: </label>' +
+							'<input type="text" id="loginUname" name="loginUname"/>' +
+							'<label for="Pword">Password: </label>' +
+							'<input type="text" id="loginPword" name="loginPword"/>' +
+							'<input type="button" value="Submit" id="loginSubmit"/>'
+					);
+					$("#showRooms").empty();
 				});
 			});
 		</script>
 	</head>
 	<body>
-		<div class="jombotron text-center"><h1>Chat tester</h1></div>
 		<div class="container-fluid">
+			<div class="row">
+				<div id="loginFeild"></div>
+			</div>
+			<div class="row" style="height: 30px;"></div>
+			<div class="jombotron text-center"><h1>Chat tester</h1></div>
 			<div class="row" style="height: 30px;"></div>
 			<div class="row">
 				<div class="col-2"></div>
 				<div class="col">
 					<div class="row">
 						<div class="rooms" id="showRooms"></div>
+					</div>
+					<div class="row" style="height: 30px;"></div>
+					<div class="row">
+						<div
+							id="chatBox"
+							class="jumbotron"
+							style="width: 100%; height: 200px; overflow: auto;"
+						></div>
 					</div>
 					<div class="row" style="height: 30px;"></div>
 					<div class="row">
@@ -154,24 +213,10 @@
 							/>
 						</div>
 					</div>
+					<div class="row" style="height: 50px;"></div>
 				</div>
 				<div class="col-2"></div>
 			</div>
-		</div>
-		<div id="comment_box" style="padding: 5%;"></div>
-		<div>
-			<div
-				id="show_comments"
-				class="jumbotron"
-				style="
-					width: 38%;
-					height: 100%;
-					padding: 2%;
-					margin-left: 5%;
-					margin-top: -53px;
-					float: left;
-				"
-			></div>
 		</div>
 		<script type="text/javascript"></script>
 	</body>
