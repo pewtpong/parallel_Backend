@@ -63,14 +63,42 @@
 					);
 				});
 				socket.on("thisRoom", async (msg) => {
+					console.log(msg);
 					if (msg === 1) {
 						alert("Duplicate User in Group");
+					} else if (msg.state === 0) {
+						//alert("Done");
+						room_msg = msg.msg;
+						console.log(room_msg);
+						$("#chatBox").empty();
+						$("#chatMember").empty();
+						room_msg.messages.forEach((chat) => {
+							$("#chatBox").append(chat + "<br />");
+						});
+						room_msg.members.forEach((member) => {
+							$("#chatMember").append(member.username + "<br />");
+						});
+						$("#roomID").empty();
+						$("#roomID").append("<h3>" + room_msg._id + "</h3>");
+						updateScroll();
 					} else {
-						room_msg = msg.message;
+						room_msg = msg.messages;
 						$("#chatBox").empty();
 						$("#chatMember").empty();
 						room_msg.forEach((chat) => {
-							$("#chatBox").append(chat.msg + "<br />");
+							if (chat.username === thisUser.username) {
+								$("#chatBox").append(
+									'<p style="float: right;">' +
+										
+										chat.msg +
+										"</p><br /><br />"
+								);
+							} else {
+								$("#chatBox").append(
+									'<p style="float: left;">' + chat.username +": " + chat.msg + "</p><br /><br />"
+								);
+							}
+							//$("#chatBox").append(chat.msg + "<br />");
 						});
 						msg.members.forEach((member) => {
 							$("#chatMember").append(member.username + "<br />");
@@ -97,7 +125,18 @@
 					}
 				});
 				socket.on("updateRoom", async (room_msg) => {
-					$("#chatBox").append(room_msg.msg + "<br />");
+					console.log(room_msg);
+					if (room_msg.username === thisUser.username) {
+						$("#chatBox").append(
+							'<p style="float: right;">' +
+								room_msg.msg +
+								"</p><br /><br />"
+						);
+					} else {
+						$("#chatBox").append(
+							'<p style="float: left;">' + room_msg.username+  ":" + room_msg.msg + "</p><br /><br />"
+						);
+					}
 					updateScroll();
 				});
 				$("#add_msg").click(function () {
@@ -106,7 +145,7 @@
 					} else {
 						socket.emit("chat", {
 							cid: cid,
-							uid: thisUser.uid,
+							username: thisUser.username,
 							msg: $("#comment").val(),
 						});
 						$("#comment").val("");
@@ -132,13 +171,26 @@
 						socket.emit("joinGroup", {
 							gid: gid,
 							username: thisUser.username,
+							sid: thisUser.sid,
 						});
 						$("#add_friend_uname").val("");
 					}
 				});
 				socket.on("chatRooms", function (msg) {
 					console.log(msg);
-					if (msg.lenght != 0) {
+					if (msg.state === 0) {
+						thisUser = msg.msg;
+						$("#showRooms").empty();
+						thisUser.chatRooms.forEach((room) => {
+							$("#showRooms").append(
+								'<input type=button id="' +
+									room.cid +
+									'" value="' +
+									room.chatName +
+									'"/>'
+							);
+						});
+					} else if (msg.lenght != 0) {
 						$("#showRooms").empty();
 						msg.forEach((room) => {
 							$("#showRooms").append(
@@ -269,7 +321,6 @@
 									border-style: solid;
 									width: 100%;
 									height: 100%;
-									overflow: auto;
 								"
 							></div>
 						</div>
@@ -279,9 +330,10 @@
 								style="
 									border-style: solid;
 									width: 100%;
-									height: 100%;
+									height: 200px;
 									overflow: auto;
 								"
+								class="overflow-auto"
 							></div>
 						</div>
 						<div class="col-2">
@@ -291,7 +343,6 @@
 									border-style: solid;
 									width: 100%;
 									height: 100%;
-									overflow: auto;
 								"
 							></div>
 						</div>

@@ -6,7 +6,7 @@ const chatRoomsSchema = new Schema({
     chatName: String,
     lastestUpdate: Date,
     members:Array,
-    message: Array,
+    messages: Array,
     chatType: String
 });
 

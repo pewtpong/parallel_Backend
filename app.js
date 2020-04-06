@@ -99,23 +99,39 @@ io.use(
 io.on("connection", async (socket) => {
 	//console.log(socket.decoded_token);
 	let userData;
-	let currentRoom;
+	let currentRoom ="";
 	let clients;
 	//clients = io.sockets.clients("5e88c8fa9b135f3f88ea4296");
 	clients = Object.keys(io.engine.clients);
-	console.log(socket.id);
+	//console.log(socket.id);
 	await usersModel
 		.find({
 			username: socket.decoded_token,
 		})
 		.then(async (doc) => {
-			console.log(doc[0]);
+			//console.log(doc[0]);
 			userData = doc[0];
 			socket.emit("isAuth", userData);
 			socket.emit("chatRooms", userData.chatRooms);
 			socket.emit("friendList", userData.friends);
+			socket.to(userData.sid).emit("forceDisconnect");
 		});
-	await currentClient
+	await usersModel
+		.findOneAndUpdate(
+			{
+				username: userData.username,
+			},
+			{
+				sid: socket.id,
+			},
+			{
+				upsert: true,
+			}
+		)
+		.then((sDoc) => {
+			console.log(sDoc[0]);
+		});
+	/*await currentClient
 		.find({
 			uid: userData._id,
 		})
@@ -124,8 +140,8 @@ io.on("connection", async (socket) => {
 				//console.log(doc);
 				socket.to(doc[0].sid).emit("forceDisconnect");
 			}
-		});
-	await currentClient.findOneAndUpdate(
+		});*/
+	/*await currentClient.findOneAndUpdate(
 		{
 			uid: userData.id,
 		},
@@ -137,7 +153,7 @@ io.on("connection", async (socket) => {
 		{
 			upsert: true,
 		}
-	);
+	);*/
 	// USER'S DEPENDENCY
 	socket.on("addFriend", (msg) => {
 		usersModel
@@ -149,6 +165,8 @@ io.on("connection", async (socket) => {
 					console.log(doc[0].friends);
 					if (doc[0].friends.indexOf(userData.username) !== -1) {
 						socket.emit("friendList", -1);
+					}else if(msg.username === userData.username ){
+						socket.emit("friendList", -2);
 					} else {
 						usersModel
 							.findOneAndUpdate(
@@ -162,18 +180,10 @@ io.on("connection", async (socket) => {
 								}
 							)
 							.then((doc) => {
-								currentClient
-									.find({
-										uid: doc._id,
-									})
-									.then((sdoc) => {
-										let fTemp = doc.friends;
-										fTemp.push(userData.username);
-										io.to(sdoc[0].sid).emit(
-											"friendList",
-											fTemp
-										);
-									});
+								console.log(doc)
+								let fTemp = doc.friends;
+								fTemp.push(userData.username);
+								io.to(doc.sid).emit("friendList", fTemp);
 							});
 						usersModel
 							.findOneAndUpdate(
@@ -197,32 +207,42 @@ io.on("connection", async (socket) => {
 			});
 	});
 	// ROOM
-	socket.on("room", async (roomId) => {
-		await roomsModel
+	socket.on("room", (roomId) => {
+		console.log(roomId);
+		roomsModel
 			.find({
 				_id: roomId,
 			})
 			.then((doc) => {
+				socket.leave(currentRoom._id);
 				currentRoom = doc[0];
 				socket.join(roomId);
 				socket.emit("thisRoom", currentRoom);
+				console.log(currentRoom);
 			});
 	});
-	socket.on("chat", async (chat) => {
+	socket.on("chat", (chat) => {
 		if (chat.cid == currentRoom._id) {
 			//console.log(currentRoom._id);
-			await roomsModel
+			let timestamp = new Date();
+			 roomsModel
 				.findOneAndUpdate(
 					{
 						_id: currentRoom,
 					},
 					{
-						lastestUpdate: new Date(),
-						$push: { message: chat },
+						lastestUpdate: timestamp,
+						$push: { 
+							messages: {
+								msg:chat.msg,
+								timestamp: timestamp,
+								username: chat.username
+							}
+						 },
 					}
 				)
 				.then(() => {
-					io.in(chat.cid).emit("updateRoom", chat);
+					io.to(currentRoom._id).emit("updateRoom", chat);
 				});
 		}
 	});
@@ -305,58 +325,102 @@ io.on("connection", async (socket) => {
 			.find({
 				_id: msg.gid,
 			})
-			.then( (doc) => {
+			.then((doc) => {
 				let state = -1;
 				if (doc.length !== 0) {
-					if (msg.username === userData.username) {
-						state = 0;
-						for(let i = 0; i< doc[0].members.length; i++){
-							console.log(doc[0].members[i].uid , userData._id)
-							if( doc[0].members[i].uid.toString() === userData._id.toString()){
-								state = 1
-								break;
-							}
+					state = 0;
+					for (let i = 0; i < doc[0].members.length; i++) {
+						//console.log(doc[0].members[i].username, msg.username);
+						if (doc[0].members[i].username === msg.username) {
+							state = 1;
+							break;
 						}
-						console.log(state);
-						if (state == 0) {
-							let updatedRoom = roomsModel.findOneAndUpdate(
-								{
-									_id: msg.gid,
-								},
-								{
-									lastestUpdate: new Date(),
-									$push: {
-										members: {
-											uid: userData._id,
-											username: userData.username,
-											profilePic: userData.profilePic,
-										},
-									},
-								}
-							).then(() =>  {
-								updatedRoom.members.push( {
-									uid: userData._id,
-									username: userData.username,
-									profilePic: userData.profilePic,
-								})
-							})
-							usersModel.findOneAndUpdate(
+					}
+					//console.log(state);
+					if (state == 0) {
+						let updatedUser;
+						let updatedRoom;
+						usersModel
+							.findOneAndUpdate(
 								{
 									_id: userData._id,
 								},
 								{
-									$push: { chatRooms: msg.uid },
+									$push: {
+										chatRooms: {
+											chatName: doc[0].chatName,
+											cid: doc[0]._id,
+										},
+									},
 								}
-							);
-							socket.emit("thisRoom", userData.chatRooms);
-						}else{
-							socket.emit("thisRoom", state);
-						}
+							)
+							.then((uDoc) => {
+								updatedUser = uDoc;
+								 updatedUser.chatRooms.push({
+									chatName: doc[0].chatName,
+									cid: doc[0]._id,
+								});
+								console.log({
+									state: state,
+									msg: updatedUser,
+								})
+								console.log(uDoc.sid);
+								console.log(userData.sid);
+								if(msg.sid === userData.sid){
+									console.log(userData.sid);
+									socket.emit("chatRooms", {
+										state: state,
+										msg: updatedUser,
+									});
+								}else{
+									socket.to(uDoc.sid).emit("chatRooms", {
+										state: state,
+										msg: updatedUser,
+									});
+
+								}
+								 
+								roomsModel
+									.findOneAndUpdate(
+										{
+											_id: msg.gid,
+										},
+										{
+											lastestUpdate: new Date(),
+											$push: {
+												members: {
+													uid: uDoc._id,
+													username: uDoc.username,
+													profilePic:
+														uDoc.profilePic,
+												},
+											},
+										}
+									)
+									.then((rDoc) => {
+										updatedRoom = rDoc;
+										updatedRoom.members.push({
+											uid: userData._id,
+											username: userData.username,
+											profilePic: userData.profilePic,
+										});
+										socket.to(msg.gid).emit("thisRoom", {
+											state: state,
+											msg: updatedRoom,
+										});
+										console.log({
+											state: state,
+											msg: updatedRoom,
+										});
+									});
+							});
+					} else {
+						socket.emit("thisRoom", state);
 					}
-					//socket.emit("chatRooms", userData.chatRooms);
 				}
 			});
 	});
+	/*
 	socket.on("joinGroup", async (roomId) => {
 		roomsModel.findOneAndUpdate(
 			{
@@ -375,7 +439,7 @@ io.on("connection", async (socket) => {
 			}
 		);
 		await socket.emit("chatRooms", userData.chatRooms);
-	});
+	});*/
 
 	//client.on('register',handlerRegister);
 	//client.on('join',handlerJoin);
