@@ -73,7 +73,18 @@
 						$("#chatBox").empty();
 						$("#chatMember").empty();
 						room_msg.messages.forEach((chat) => {
-							$("#chatBox").append(chat + "<br />");
+							if (chat.username === thisUser.username) {
+								$("#chatBox").append(
+									'<p style="float: right;">' +
+										chat.msg +
+										"</p><br /><br />"
+								);
+							} else {
+								$("#chatBox").append(
+									'<p style="float: left;">' + chat.username +": " + chat.msg + "</p><br /><br />"
+								);
+							}
+							//$("#chatBox").append(chat.msg + "<br />");
 						});
 						room_msg.members.forEach((member) => {
 							$("#chatMember").append(member.username + "<br />");
