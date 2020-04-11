@@ -11,6 +11,7 @@ const userSchema = new Schema({
             return validator.isAlphanumeric(value);
         }
     },
+    name: String,
     password: String,
     chatRooms: Array,
     profilePic:String,
