@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "@koa/cors": "^2.2.3",
     "bcrypt": "^4.0.1",
     "bcrypt-nodejs": "0.0.3",
     "jsonwebtoken": "^8.5.1",
