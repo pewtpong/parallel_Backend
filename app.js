@@ -33,8 +33,7 @@ app.use(passport.session());
 
 //  ROUTER
 const router = new Router();
-app.use(router.routes());
-app.use(router.allowedMethods());
+
 
 // MONGO
 require("./src/database");
@@ -69,23 +68,27 @@ router.get("/", async (ctx, next) => {
 //const testRoute = require('./routes/test');
 const registerRoute = require("./routes/register");
 const loginRoute = require("./routes/login");
+const profileRoute = require("./routes/profile");
 //onst authRoute = require('./components/auth');
 const homeRoute = require("./routes/home");
 //const authRoute = require('./components/auth');
 //authRoute({router});
 homeRoute({ router });
+profileRoute({ router });
 //testRoute({router});
 registerRoute({ router });
 loginRoute({ router });
-
+app.use(router.routes());
+app.use(router.allowedMethods());
 http = app.listen(port, () => console.log("Server Started"));
 io = socketIo.listen(http);
 
 // Socket
 //const authenticated = require("./middleware/authenticated");
+//const currentClient = require("./models/currentClient");
+
 const usersModel = require("./models/users");
 const roomsModel = require("./models/chatRooms");
-const currentClient = require("./models/currentClient");
 var socketioJwt = require("socketio-jwt");
 
 io.use(

@@ -275,6 +275,10 @@
 	<body>
 		<div class="container-fluid">
 			<div class="row">
+				<form action="/api/profile" method="PATCH" enctype="multipart/form-data">
+        			<input type="file" accept="image/*" name="avatar" >
+        			<input type="submit" value="upload">
+				</form>
 				<div id="loginFeild"></div>
 			</div>
 			<div class="row" style="height: 30px;"></div>
