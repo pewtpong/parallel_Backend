@@ -4,6 +4,7 @@ module.exports = ({ router }) => {
 	router.post("/api/register", async (ctx, next) => {
 		let msg;
 		let uname = ctx.request.body.username;
+		let name = ctx.request.body.name;
 		let pword;
 		await bcrypt.hash(ctx.request.body.password).then(hash => {
 			pword = hash;
@@ -11,7 +12,8 @@ module.exports = ({ router }) => {
 		});
 		msg = await new usersModel({
 			username: uname,
-			password: pword
+			password: pword,
+			name: name
 		});
 		await msg
 			.save()
