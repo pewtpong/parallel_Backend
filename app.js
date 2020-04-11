@@ -3,10 +3,12 @@ const json = require("koa-json");
 const Router = require("koa-router");
 const logger = require("koa-logger");
 const socketIo = require("socket.io");
-const port = 3000;
+const port = 8000;
 const render = require("koa-ejs");
 const path = require("path");
 //const jwt = require('jsonwebtoken');
+const cors = require('@koa/cors');
+
 
 const app = new Koa();
 
@@ -15,6 +17,7 @@ app.proxy = true;
 
 app.use(json());
 app.use(logger());
+app.use(cors());
 
 //  SESSIONS
 const session = require("koa-session");
