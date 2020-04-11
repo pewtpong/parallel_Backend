@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<title>Socket.io</title>
-		<script src="http://localhost:3000/socket.io/socket.io.js"></script>
+		<script src="http://localhost:8000/socket.io/socket.io.js"></script>
 		<link
 			rel="stylesheet"
 			href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
@@ -27,7 +27,7 @@
 		></script>
 		<script>
 			$(document).ready(function () {
-				let socket = io("http://localhost:3000", {
+				let socket = io("http://localhost:8000", {
 					query:
 						"token=" +
 						"yJhbGciOiJIUzI1NiJ9.dGVzdDE.xwsQdV26DM01VH-_XEKPTSEbyfGNuOlNcwo-9XNV3Fo",
@@ -67,7 +67,6 @@
 					if (msg === 1) {
 						alert("Duplicate User in Group");
 					} else if (msg.state === 0) {
-						//alert("Done");
 						room_msg = msg.msg;
 						console.log(room_msg);
 						$("#chatBox").empty();
@@ -232,7 +231,7 @@
 					let uname = await $("#loginUname").val();
 					let pword = await $("#loginPword").val();
 					console.log(uname, pword);
-					let res = await fetch("http://localhost:3000/api/login", {
+					let res = await fetch("http://localhost:8000/api/login", {
 						method: "POST",
 						body: JSON.stringify({
 							username: uname,
@@ -256,6 +255,27 @@
 						socket.connect();
 					}
 				});
+				/*$("#upFile").on("click", "#fileSubmit", async (event) => {
+					let resData;
+					let status;
+					let res = await fetch("http://localhost:3000/api/profile", {
+						method: "POST",
+						body: JSON.stringify({
+							username: uname,
+							password: pword,
+						}),
+						headers: {
+							"Content-Type": "application/json",
+						},
+					})
+						.then((res) => {
+							console.log(res);
+							return res.json();
+						})
+						.then((obj) => {
+							resData = obj;
+						});
+				});*/
 				socket.on("forceDisconnect", () => {
 					socket.disconnect();
 					alert("Duplicate Login");
@@ -275,9 +295,9 @@
 	<body>
 		<div class="container-fluid">
 			<div class="row">
-				<form action="/api/profile" method="PATCH" enctype="multipart/form-data">
-        			<input type="file" accept="image/*" name="avatar" >
-        			<input type="submit" value="upload">
+				<form id ="upFile" action="/api/profile" method="POST" enctype="multipart/form-data">
+        			<input id="fileToUpload"type="file" accept="image/*" name="avatar" >
+        			<input id="fileSubmit" type="submit" value="upload">
 				</form>
 				<div id="loginFeild"></div>
 			</div>

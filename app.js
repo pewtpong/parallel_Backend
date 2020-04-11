@@ -6,7 +6,6 @@ const socketIo = require("socket.io");
 const port = 8000;
 const render = require("koa-ejs");
 const path = require("path");
-//const jwt = require('jsonwebtoken');
 const cors = require('@koa/cors');
 
 
@@ -37,11 +36,9 @@ app.use(passport.session());
 //  ROUTER
 const router = new Router();
 
-
 // MONGO
 require("./src/database");
-//const mongoConnect = require('./src/database');
-//mongoConnect._connect();
+
 
 render(app, {
 	root: path.join(__dirname, "view"),
@@ -63,7 +60,7 @@ app.use(async (ctx, next) => {
 });
 
 //Home
-router.get("/", async (ctx, next) => {
+router.get("/", async ctx => {
 	await ctx.render("index");
 	//await next();
 });
