@@ -289,12 +289,13 @@ io.on("connection", async (socket) => {
 						.then(() => {
 							userData.chatRooms.push(chatTemp);
 							console.log(userData.chatRooms);
-							socket.emit("chatRooms", userData.chatRooms);
+							socket.emit("createGroupResult", "success");
 							//console.log(userData.chatRooms);
 						});
 				})
 				.catch((err) => {
 					console.error(err);
+					socket.emit("createGroupResult", "error");
 				});
 		}
 	});
