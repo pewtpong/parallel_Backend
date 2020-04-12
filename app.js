@@ -267,6 +267,7 @@ io.on("connection", async (socket) => {
 				],
 				chatType: "g",
 				lastestUpdate: new Date(),
+				owner: userData.username
 			});
 			await temp
 				.save()
@@ -430,9 +431,12 @@ io.on("connection", async (socket) => {
 										});
 									});
 							});
+							socket.emit("joinGroupResult", "success");
 					} else {
 						socket.emit("thisRoom", state);
 					}
+				}else{
+					socket.emit("joinGroupResult", "error");
 				}
 			});
 	});

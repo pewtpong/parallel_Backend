@@ -7,7 +7,8 @@ const chatRoomsSchema = new Schema({
     lastestUpdate: Date,
     members:Array,
     messages: Array,
-    chatType: String
+    chatType: String,
+    owner: String
 });
 
 module.exports = mongoose.model('ChatRooms',chatRoomsSchema);
