@@ -230,6 +230,11 @@ io.on("connection", async (socket) => {
 		if (chat.cid == currentRoom._id) {
 			//console.log(currentRoom._id);
 			let timestamp = new Date();
+			let chatResponse = {
+				msg:chat.msg,
+				timestamp: timestamp,
+				username: chat.username
+			}
 			 roomsModel
 				.findOneAndUpdate(
 					{
@@ -238,16 +243,12 @@ io.on("connection", async (socket) => {
 					{
 						lastestUpdate: timestamp,
 						$push: { 
-							messages: {
-								msg:chat.msg,
-								timestamp: timestamp,
-								username: chat.username
-							}
+							messages: chatResponse
 						 },
 					}
 				)
 				.then(() => {
-					io.to(currentRoom._id).emit("updateRoom", chat);
+					io.to(currentRoom._id).emit("updateRoom", chatResponse);
 				});
 		}
 	});
@@ -287,6 +288,7 @@ io.on("connection", async (socket) => {
 						)
 						.then(() => {
 							userData.chatRooms.push(chatTemp);
+							console.log(userData.chatRooms);
 							socket.emit("chatRooms", userData.chatRooms);
 							//console.log(userData.chatRooms);
 						});
