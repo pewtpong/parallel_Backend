@@ -277,6 +277,7 @@ io.on("connection", async (socket) => {
 					let chatTemp = {
 						chatName: doc.chatName,
 						cid: doc._id,
+						owner: userData.username
 					};
 					usersModel
 						.findOneAndUpdate(
