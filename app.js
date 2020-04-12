@@ -290,12 +290,13 @@ io.on("connection", async (socket) => {
 						.then(() => {
 							userData.chatRooms.push(chatTemp);
 							console.log(userData.chatRooms);
-							socket.emit("chatRooms", userData.chatRooms);
+							socket.emit("createGroupResult", "success");
 							//console.log(userData.chatRooms);
 						});
 				})
 				.catch((err) => {
 					console.error(err);
+					socket.emit("createGroupResult", "error");
 				});
 		}
 	});
@@ -334,7 +335,7 @@ io.on("connection", async (socket) => {
 				})
 			})
 			.then(() => {
-				socket.emit("chatRooms", userData.chatRooms);
+				socket.emit("deleteGroupSuccess", userData.chatRooms);
 			});
 	});
 	socket.on("joinGroup", async (msg) => {
@@ -421,10 +422,11 @@ io.on("connection", async (socket) => {
 											username: userData.username,
 											profilePic: userData.profilePic,
 										});
-										socket.to(msg.gid).emit("thisRoom", {
-											state: state,
-											msg: updatedRoom,
-										});
+										// socket.to(msg.gid).emit("thisRoom", {
+										// 	state: state,
+										// 	msg: updatedRoom,
+										// });
+										socket.emit("joinGroupResult", "success");
 										console.log({
 											state: state,
 											msg: updatedRoom,
@@ -433,7 +435,7 @@ io.on("connection", async (socket) => {
 							});
 							socket.emit("joinGroupResult", "success");
 					} else {
-						socket.emit("thisRoom", state);
+						socket.emit("joinGroupResult", "error");
 					}
 				}else{
 					socket.emit("joinGroupResult", "error");
