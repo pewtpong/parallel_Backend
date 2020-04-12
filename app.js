@@ -6,7 +6,6 @@ const socketIo = require("socket.io");
 const port = 8000;
 const render = require("koa-ejs");
 const path = require("path");
-//const jwt = require('jsonwebtoken');
 const cors = require('@koa/cors');
 
 
@@ -36,13 +35,10 @@ app.use(passport.session());
 
 //  ROUTER
 const router = new Router();
-app.use(router.routes());
-app.use(router.allowedMethods());
 
 // MONGO
 require("./src/database");
-//const mongoConnect = require('./src/database');
-//mongoConnect._connect();
+
 
 render(app, {
 	root: path.join(__dirname, "view"),
@@ -64,7 +60,7 @@ app.use(async (ctx, next) => {
 });
 
 //Home
-router.get("/", async (ctx, next) => {
+router.get("/", async ctx => {
 	await ctx.render("index");
 	//await next();
 });
@@ -72,23 +68,27 @@ router.get("/", async (ctx, next) => {
 //const testRoute = require('./routes/test');
 const registerRoute = require("./routes/register");
 const loginRoute = require("./routes/login");
+const profileRoute = require("./routes/profile");
 //onst authRoute = require('./components/auth');
 const homeRoute = require("./routes/home");
 //const authRoute = require('./components/auth');
 //authRoute({router});
 homeRoute({ router });
+profileRoute({ router });
 //testRoute({router});
 registerRoute({ router });
 loginRoute({ router });
-
+app.use(router.routes());
+app.use(router.allowedMethods());
 http = app.listen(port, () => console.log("Server Started"));
 io = socketIo.listen(http);
 
 // Socket
 //const authenticated = require("./middleware/authenticated");
+//const currentClient = require("./models/currentClient");
+
 const usersModel = require("./models/users");
 const roomsModel = require("./models/chatRooms");
-const currentClient = require("./models/currentClient");
 var socketioJwt = require("socketio-jwt");
 
 io.use(
