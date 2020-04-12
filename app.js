@@ -306,7 +306,7 @@ io.on("connection", async (socket) => {
 				group = doc[0];
 				members = doc[0].members;
 			})
-			.then(() => {
+			.then( async () => {
 				members.forEach((member) => {
 					usersModel.updateOne(
 						{
@@ -322,7 +322,7 @@ io.on("connection", async (socket) => {
 				});
 			})
 			.then(() => {
-				socket.emit("chatRooms", userData.chatRooms);
+				socket.emit("deleteGroupSuccess", userData.chatRooms);
 			});
 	});
 	socket.on("joinGroup", async (msg) => {
@@ -409,10 +409,11 @@ io.on("connection", async (socket) => {
 											username: userData.username,
 											profilePic: userData.profilePic,
 										});
-										socket.to(msg.gid).emit("thisRoom", {
-											state: state,
-											msg: updatedRoom,
-										});
+										// socket.to(msg.gid).emit("thisRoom", {
+										// 	state: state,
+										// 	msg: updatedRoom,
+										// });
+										socket.emit("joinGroupResult", "success");
 										console.log({
 											state: state,
 											msg: updatedRoom,
@@ -420,7 +421,7 @@ io.on("connection", async (socket) => {
 									});
 							});
 					} else {
-						socket.emit("thisRoom", state);
+						socket.emit("joinGroupResult", "error");
 					}
 				}
 			});
