@@ -83,13 +83,15 @@ app.use(router.allowedMethods());
 http = app.listen(port, () => console.log("Server Started"));
 io = socketIo.listen(http);
 
+
 // Socket
 //const authenticated = require("./middleware/authenticated");
 //const currentClient = require("./models/currentClient");
 
 const usersModel = require("./models/users");
 const roomsModel = require("./models/chatRooms");
-var socketioJwt = require("socketio-jwt");
+let socketioJwt = require("socketio-jwt");
+let mongoose = require('mongoose');
 
 io.use(
 	socketioJwt.authorize({
@@ -106,7 +108,7 @@ io.on("connection", async (socket) => {
 	let clients;
 	//clients = io.sockets.clients("5e88c8fa9b135f3f88ea4296");
 	clients = Object.keys(io.engine.clients);
-	//console.log(socket.id);
+	console.log(socket.id);
 	await usersModel
 		.find({
 			username: socket.decoded_token,
@@ -251,6 +253,7 @@ io.on("connection", async (socket) => {
 	});
 	// GROUP
 	socket.on("createGroup", async (groupName) => {
+		console.log(groupName);
 		if (groupName != "") {
 			let temp = await new roomsModel({
 				chatName: groupName,
@@ -294,30 +297,38 @@ io.on("connection", async (socket) => {
 		}
 	});
 	socket.on("deleteGroup", async (roomId) => {
+		console.log(roomId)
 		let group;
-		let members;
+		//let members;
 		roomsModel
 			.find({
 				_id: roomId,
 			})
 			.then((doc) => {
+				//console.log(doc);
 				group = doc[0];
-				members = doc[0].members;
-			})
-			.then(() => {
-				members.forEach((member) => {
-					usersModel.updateOne(
+				let id = mongoose.Types.ObjectId(roomId);
+				//console.log(doc[0].members)
+				doc[0].members.forEach((member) => {
+					
+					console.log(group.chatName);
+					usersModel.findOneAndUpdate(
 						{
 							_id: member.uid,
 						},
 						{
-							$pull: { chatRooms: roomId },
+							$pull: { chatRooms: {chatName:group.chatName,cid:id } },
 						}
-					);
+					).then( doc => {
+						console.log("OBJ: ")
+						console.log(doc)
+					})
 				});
 				roomsModel.findOneAndDelete({
 					_id: roomId,
-				});
+				}).then( doc =>{
+					//console.log(doc)
+				})
 			})
 			.then(() => {
 				socket.emit("chatRooms", userData.chatRooms);
