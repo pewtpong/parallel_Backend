@@ -6,8 +6,7 @@ const socketIo = require("socket.io");
 const port = 8000;
 const render = require("koa-ejs");
 const path = require("path");
-const cors = require('@koa/cors');
-
+const cors = require("@koa/cors");
 
 const app = new Koa();
 
@@ -39,7 +38,6 @@ const router = new Router();
 // MONGO
 require("./src/database");
 
-
 render(app, {
 	root: path.join(__dirname, "view"),
 	layout: false,
@@ -50,7 +48,6 @@ render(app, {
 
 app.use(async (ctx, next) => {
 	try {
-		//await ctx.render('index');
 		await next();
 	} catch (err) {
 		ctx.status = err.status || 500;
@@ -60,22 +57,16 @@ app.use(async (ctx, next) => {
 });
 
 //Home
-router.get("/", async ctx => {
+router.get("/", async (ctx) => {
 	await ctx.render("index");
-	//await next();
 });
 
-//const testRoute = require('./routes/test');
 const registerRoute = require("./routes/register");
 const loginRoute = require("./routes/login");
 const profileRoute = require("./routes/profile");
-//onst authRoute = require('./components/auth');
 const homeRoute = require("./routes/home");
-//const authRoute = require('./components/auth');
-//authRoute({router});
 homeRoute({ router });
 profileRoute({ router });
-//testRoute({router});
 registerRoute({ router });
 loginRoute({ router });
 app.use(router.routes());
@@ -84,14 +75,10 @@ http = app.listen(port, () => console.log("Server Started"));
 io = socketIo.listen(http);
 
 
-// Socket
-//const authenticated = require("./middleware/authenticated");
-//const currentClient = require("./models/currentClient");
-
 const usersModel = require("./models/users");
 const roomsModel = require("./models/chatRooms");
 let socketioJwt = require("socketio-jwt");
-let mongoose = require('mongoose');
+let mongoose = require("mongoose");
 
 io.use(
 	socketioJwt.authorize({
@@ -102,63 +89,32 @@ io.use(
 );
 
 io.on("connection", async (socket) => {
-	//console.log(socket.decoded_token);
 	let userData;
-	let currentRoom ="";
+	let currentRoom = "";
 	let clients;
-	//clients = io.sockets.clients("5e88c8fa9b135f3f88ea4296");
 	clients = Object.keys(io.engine.clients);
-	console.log(socket.id);
 	await usersModel
 		.find({
 			username: socket.decoded_token,
 		})
 		.then(async (doc) => {
-			//console.log(doc[0]);
 			userData = doc[0];
 			socket.emit("isAuth", userData);
 			socket.emit("chatRooms", userData.chatRooms);
 			socket.emit("friendList", userData.friends);
 			socket.to(userData.sid).emit("forceDisconnect");
 		});
-	await usersModel
-		.findOneAndUpdate(
-			{
-				username: userData.username,
-			},
-			{
-				sid: socket.id,
-			},
-			{
-				upsert: true,
-			}
-		)
-		.then((sDoc) => {
-			console.log(sDoc[0]);
-		});
-	/*await currentClient
-		.find({
-			uid: userData._id,
-		})
-		.then((doc) => {
-			if (doc.length != 0) {
-				//console.log(doc);
-				socket.to(doc[0].sid).emit("forceDisconnect");
-			}
-		});*/
-	/*await currentClient.findOneAndUpdate(
+	await usersModel.findOneAndUpdate(
 		{
-			uid: userData.id,
+			username: userData.username,
 		},
 		{
-			$set: {
-				sid: socket.id,
-			},
+			sid: socket.id,
 		},
 		{
 			upsert: true,
 		}
-	);*/
+	);
 	// USER'S DEPENDENCY
 	socket.on("addFriend", (msg) => {
 		usersModel
@@ -167,10 +123,9 @@ io.on("connection", async (socket) => {
 			})
 			.then((doc) => {
 				if (doc.length !== 0) {
-					console.log(doc[0].friends);
 					if (doc[0].friends.indexOf(userData.username) !== -1) {
 						socket.emit("friendList", -1);
-					}else if(msg.username === userData.username ){
+					} else if (msg.username === userData.username) {
 						socket.emit("friendList", -2);
 					} else {
 						usersModel
@@ -185,7 +140,6 @@ io.on("connection", async (socket) => {
 								}
 							)
 							.then((doc) => {
-								console.log(doc)
 								let fTemp = doc.friends;
 								fTemp.push(userData.username);
 								io.to(doc.sid).emit("friendList", fTemp);
@@ -213,7 +167,6 @@ io.on("connection", async (socket) => {
 	});
 	// ROOM
 	socket.on("room", (roomId) => {
-		console.log(roomId);
 		roomsModel
 			.find({
 				_id: roomId,
@@ -223,28 +176,26 @@ io.on("connection", async (socket) => {
 				currentRoom = doc[0];
 				socket.join(roomId);
 				socket.emit("thisRoom", currentRoom);
-				console.log(currentRoom);
 			});
 	});
 	socket.on("chat", (chat) => {
 		if (chat.cid == currentRoom._id) {
-			//console.log(currentRoom._id);
 			let timestamp = new Date();
 			let chatResponse = {
-				msg:chat.msg,
+				msg: chat.msg,
 				timestamp: timestamp,
-				username: chat.username
-			}
-			 roomsModel
+				username: chat.username,
+			};
+			roomsModel
 				.findOneAndUpdate(
 					{
 						_id: currentRoom,
 					},
 					{
 						lastestUpdate: timestamp,
-						$push: { 
-							messages: chatResponse
-						 },
+						$push: {
+							messages: chatResponse,
+						},
 					}
 				)
 				.then(() => {
@@ -254,7 +205,6 @@ io.on("connection", async (socket) => {
 	});
 	// GROUP
 	socket.on("createGroup", async (groupName) => {
-		console.log(groupName);
 		if (groupName != "") {
 			let temp = await new roomsModel({
 				chatName: groupName,
@@ -267,19 +217,18 @@ io.on("connection", async (socket) => {
 				],
 				chatType: "g",
 				lastestUpdate: new Date(),
-				owner: userData.username
+				owner: userData.username,
 			});
 			await temp
 				.save()
 				.then(async (doc) => {
-					//console.log(doc);
 					cid = doc._id;
 					let chatTemp = {
 						chatName: doc.chatName,
 						cid: doc._id,
-						owner: userData.username
+						owner: userData.username,
 					};
-					usersModel
+					await usersModel
 						.findOneAndUpdate(
 							{
 								_id: userData._id,
@@ -290,50 +239,41 @@ io.on("connection", async (socket) => {
 						)
 						.then(() => {
 							userData.chatRooms.push(chatTemp);
-							console.log(userData.chatRooms);
 							socket.emit("createGroupResult", "success");
-							//console.log(userData.chatRooms);
 						});
 				})
 				.catch((err) => {
-					console.error(err);
 					socket.emit("createGroupResult", "error");
 				});
 		}
 	});
 	socket.on("deleteGroup", async (roomId) => {
-		console.log(roomId)
 		let group;
-		//let members;
 		roomsModel
 			.find({
 				_id: roomId,
 			})
 			.then((doc) => {
-				//console.log(doc);
 				group = doc[0];
 				let id = mongoose.Types.ObjectId(roomId);
-				//console.log(doc[0].members)
 				doc[0].members.forEach((member) => {
-					
-					console.log(group.chatName);
 					usersModel.findOneAndUpdate(
 						{
 							_id: member.uid,
 						},
 						{
-							$pull: { chatRooms: {chatName:group.chatName,cid:id } },
+							$pull: {
+								chatRooms: {
+									chatName: group.chatName,
+									cid: id,
+								},
+							},
 						}
-					).then( doc => {
-						console.log("OBJ: ")
-						console.log(doc)
-					})
+					);
 				});
 				roomsModel.findOneAndDelete({
 					_id: roomId,
-				}).then( doc =>{
-					//console.log(doc)
-				})
+				});
 			})
 			.then(() => {
 				socket.emit("deleteGroupSuccess", userData.chatRooms);
@@ -349,13 +289,11 @@ io.on("connection", async (socket) => {
 				if (doc.length !== 0) {
 					state = 0;
 					for (let i = 0; i < doc[0].members.length; i++) {
-						//console.log(doc[0].members[i].username, msg.username);
 						if (doc[0].members[i].username === msg.username) {
 							state = 1;
 							break;
 						}
 					}
-					//console.log(state);
 					if (state == 0) {
 						let updatedUser;
 						let updatedRoom;
@@ -375,30 +313,22 @@ io.on("connection", async (socket) => {
 							)
 							.then((uDoc) => {
 								updatedUser = uDoc;
-								 updatedUser.chatRooms.push({
+								updatedUser.chatRooms.push({
 									chatName: doc[0].chatName,
 									cid: doc[0]._id,
 								});
-								console.log({
-									state: state,
-									msg: updatedUser,
-								})
-								console.log(uDoc.sid);
-								console.log(userData.sid);
-								if(msg.sid === userData.sid){
-									console.log(userData.sid);
+								if (msg.sid === userData.sid) {
 									socket.emit("chatRooms", {
 										state: state,
 										msg: updatedUser,
 									});
-								}else{
+								} else {
 									socket.to(uDoc.sid).emit("chatRooms", {
 										state: state,
 										msg: updatedUser,
 									});
-
 								}
-								 
+
 								roomsModel
 									.findOneAndUpdate(
 										{
@@ -410,8 +340,7 @@ io.on("connection", async (socket) => {
 												members: {
 													uid: uDoc._id,
 													username: uDoc.username,
-													profilePic:
-														uDoc.profilePic,
+													profilePic: uDoc.profilePic,
 												},
 											},
 										}
@@ -423,60 +352,82 @@ io.on("connection", async (socket) => {
 											username: userData.username,
 											profilePic: userData.profilePic,
 										});
-										// socket.to(msg.gid).emit("thisRoom", {
-										// 	state: state,
-										// 	msg: updatedRoom,
-										// });
-										socket.emit("joinGroupResult", "success");
-										console.log({
-											state: state,
-											msg: updatedRoom,
-										});
+										socket.emit(
+											"joinGroupResult",
+											"success"
+										);
 									});
 							});
-							socket.emit("joinGroupResult", "success");
+						socket.emit("joinGroupResult", "success");
 					} else {
 						socket.emit("joinGroupResult", "error");
 					}
-				}else{
+				} else {
 					socket.emit("joinGroupResult", "error");
 				}
 			});
 	});
-	/*
-	socket.on("joinGroup", async (roomId) => {
-		roomsModel.findOneAndUpdate(
-			{
-				_id: roomId,
-			},
-			{
-				$push: { members: userData._id },
-			}
-		);
-		usersModel.findOneAndUpdate(
-			{
-				_id: userData._id,
-			},
-			{
-				$push: { chatRooms: roomId },
-			}
-		);
-		await socket.emit("chatRooms", userData.chatRooms);
-	});*/
-
-	//client.on('register',handlerRegister);
-	//client.on('join',handlerJoin);
-	//client.on('leave',handlerLeave);
-	//client.on('message',handlerMessage);
-
-	//client.on('availableUsers',handlerGetAvailableUsers);
-	socket.on("disconnect", () => {
-		console.log("client diconnected", socket.id);
+	socket.on("leaveGroup", async (msg) => {
+		roomsModel
+			.find({
+				_id: msg.gid,
+			})
+			.then((doc) => {
+				let state = -1;
+				if (doc.length !== 0) {
+					state = 0;
+					for (let i = 0; i < doc[0].members.length; i++) {
+						if (doc[0].members[i].username === msg.username) {
+							state = 1;
+							break;
+						}
+					}
+					if (state == 1) {
+						let updatedUser;
+						let updatedRoom;
+						usersModel
+							.findOneAndUpdate(
+								{
+									_id: userData._id,
+								},
+								{
+									$pull: { chatRooms: { cid: doc[0]._id } },
+								}
+							)
+							.then((uDoc) => {
+								updatedUser = uDoc;
+								roomsModel
+									.findOneAndUpdate(
+										{
+											_id: msg.gid,
+										},
+										{
+											$pull: {
+												members: { uid: uDoc._id },
+											},
+										}
+									)
+									.then((rDoc) => {
+										updatedRoom = rDoc;
+									});
+							});
+						socket.emit("leaveGroupResult", {
+							status: "success",
+							user: updatedUser,
+							room: updatedRoom,
+						});
+					} else {
+						socket.emit("leaveGroupResult", {
+							status: "error",
+						});
+					}
+				} else {
+					socket.emit("leaveGroupResult", {
+						status: "error",
+					});
+				}
+			});
 	});
-	//client.on('error',(err) => {
-	//    console.log("received error from client:", client.id)
-	//   console.log(err);
-	//});
 });
 
 module.exports = io;
