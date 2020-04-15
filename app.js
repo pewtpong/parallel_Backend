@@ -477,6 +477,76 @@ io.on("connection", async (socket) => {
 	//    console.log("received error from client:", client.id)
 	//   console.log(err);
 	//});
+
+	socket.on("leaveGroup", async (msg) => {
+		roomsModel
+		.find({
+			_id: msg.gid,
+		})
+		.then((doc) => {
+			let state = -1;
+			if (doc.length !== 0) {
+				state = 0;
+				for (let i = 0; i < doc[0].members.length; i++) {
+					if (doc[0].members[i].username === msg.username) {
+						state = 1;
+						break;
+					}
+				}
+				if (state == 1) {
+					let updatedUser;
+					let updatedRoom;
+					usersModel
+					.findOneAndUpdate(
+						{
+							_id: userData._id,
+						},
+						{
+							$pull: { chatRooms: { cid: doc[0]._id, }, },
+						})
+						.then((uDoc) => {
+							updatedUser = uDoc;
+							console.log({
+								state: state,
+								msg: updatedUser,
+							});
+								 
+								roomsModel
+									.findOneAndUpdate(
+										{
+											_id: msg.gid,
+										},
+										{ 
+											$pull: { members: { uid: uDoc._id, }, },
+										}
+									)
+									.then((rDoc) => {
+										updatedRoom = rDoc;
+										console.log({
+											state: state,
+											msg: updatedRoom,
+										});
+									});
+							});
+							socket.emit("leaveGroupResult", {
+								status: "success",
+								user : updatedUser,
+								room : updatedRoom,
+							});
+					} else {
+						socket.emit("leaveGroupResult", {
+                            status: "error",
+                        });
+					}
+				}else{
+					socket.emit("leaveGroupResult", {
+						status: "error",
+					});
+				}
+			});
+	});
+
+
 });
 
 module.exports = io;

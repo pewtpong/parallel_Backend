@@ -186,6 +186,18 @@
 						$("#add_friend_uname").val("");
 					}
 				});
+				$("#leave_group").click(() => {
+					let gid = $("#group_to_leave").val();
+					if (gid == "") {
+						alert("Fill Group ID");
+					} else {
+						socket.emit("leaveGroup", {
+							gid: gid,
+							username: thisUser.username,
+							sid: thisUser.sid,
+						});
+					}
+				});
 				socket.on("chatRooms", function (msg) {
 					console.log(msg);
 					if (msg.state === 0) {
@@ -408,6 +420,22 @@
 								type="button"
 								id="createGroup"
 								value="Create Group"
+							/>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col">
+							<textarea
+								id="group_to_leave"
+								style="width: 100%;"
+							></textarea
+							><br /><br />
+						</div>
+						<div class="col">
+							<input
+								type="button"
+								id="leave_group"
+								value="Leave Group"
 							/>
 						</div>
 					</div>
