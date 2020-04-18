@@ -168,10 +168,16 @@ io.on("connection", async (socket) => {
 	// ROOM
 	socket.on("room", (roomId) => {
 		roomsModel
-			.find({
+			.findOneAndUpdate({
 				_id: roomId,
+				'members.username' : userData.username
+			},{
+				$set:{
+					'members.$.lastestUpdate' : new Date()
+				}
 			})
 			.then((doc) => {
+				console.log(doc);
 				socket.leave(currentRoom._id);
 				currentRoom = doc[0];
 				socket.join(roomId);
@@ -206,17 +212,19 @@ io.on("connection", async (socket) => {
 	// GROUP
 	socket.on("createGroup", async (groupName) => {
 		if (groupName != "") {
+			let timestamp = new Date();
 			let temp = await new roomsModel({
 				chatName: groupName,
 				members: [
 					{
+						lastestUpdate: timestamp,
 						uid: userData._id,
 						username: userData.username,
 						profilePic: userData.profilePic,
 					},
 				],
 				chatType: "g",
-				lastestUpdate: new Date(),
+				lastestUpdate: timestamp,
 				owner: userData.username,
 			});
 			await temp
@@ -295,6 +303,7 @@ io.on("connection", async (socket) => {
 						}
 					}
 					if (state == 0) {
+						let timestamp = new Date();
 						let updatedUser;
 						let updatedRoom;
 						usersModel
@@ -335,9 +344,10 @@ io.on("connection", async (socket) => {
 											_id: msg.gid,
 										},
 										{
-											lastestUpdate: new Date(),
+											lastestUpdate: timestamp,
 											$push: {
 												members: {
+													lastestUpdate: timestamp,
 													uid: uDoc._id,
 													username: uDoc.username,
 													profilePic: uDoc.profilePic,

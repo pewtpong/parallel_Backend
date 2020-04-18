@@ -5,7 +5,12 @@ const Schema = mongoose.Schema;
 const chatRoomsSchema = new Schema({
     chatName: String,
     lastestUpdate: Date,
-    members:Array,
+    members:[{
+        lastestUpdate: Date,
+        uid: String,
+        username: String,
+        profilePic: String
+    }],
     messages: Array,
     chatType: String,
     owner: String
