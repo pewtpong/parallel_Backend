@@ -176,10 +176,22 @@ io.on("connection", async (socket) => {
 					'members.$.lastestUpdate' : new Date()
 				}
 			})
-			.then((doc) => {
-				console.log(doc);
+			.then( async (doc) => {
+				// console.log(doc);
+
+				if ( currentRoom != "" ){
+					await roomsModel.findOneAndUpdate({
+						_id: currentRoom._id,
+						'members.username' : userData.username
+					},{
+						$set:{
+							'members.$.lastestUpdate' : new Date()
+						}
+					}) 
+				}
+
 				socket.leave(currentRoom._id);
-				currentRoom = doc[0];
+				currentRoom = doc;
 				socket.join(roomId);
 				socket.emit("thisRoom", currentRoom);
 			});
@@ -204,8 +216,14 @@ io.on("connection", async (socket) => {
 						},
 					}
 				)
-				.then(() => {
+				.then( async () => {
 					io.to(currentRoom._id).emit("updateRoom", chatResponse);
+
+					for(const member of currentRoom.members){
+						const uid = member.uid;
+						let user = await usersModel.findOne({_id: uid});
+						socket.to(user.sid).emit("updateAnotherGroup");
+					}
 				});
 		}
 	});
@@ -437,6 +455,53 @@ io.on("connection", async (socket) => {
 					});
 				}
 			});
+	});
+
+	socket.on("reqUnreadMsg", async () => {
+		const chatRooms = userData.chatRooms;
+		let unreadAll = {};
+		for(const chatRoom of chatRooms){
+			const room = await roomsModel.findOne({
+				_id: chatRoom.cid
+			});
+
+			let lastUserUpdate;
+			for(const member of room.members){
+				if ( member.uid == userData._id ){
+					lastUserUpdate = new Date(member.lastestUpdate);
+					break;
+				}
+			}
+			let unreadMessages = [];
+			const messages = room.messages;
+			for(let i=messages.length-1; i>=0; --i){
+				const message = messages[i];
+				const messageTime = message.timestamp;
+				if ( (new Date(messageTime)) > lastUserUpdate ){	// mssageTime ใหม่กว่า
+					unreadMessages.push(message);
+				}
+				else {
+					break;
+				}
+			}
+			unreadAll[chatRoom.cid] = unreadMessages;
+		}
+
+		socket.emit("unreadMsg", unreadAll);
+	});
+
+	socket.on("disconnect", async ()=>{
+		console.log("disconnect");
+		if ( currentRoom != "" ){
+			await roomsModel.findOneAndUpdate({
+				_id: currentRoom._id,
+				'members.username' : userData.username
+			},{
+				$set:{
+					'members.$.lastestUpdate' : new Date()
+				}
+			}) 
+		}
 	});
 });
 
